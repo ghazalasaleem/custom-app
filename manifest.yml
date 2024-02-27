@@ -1,0 +1,42 @@
+modules:
+  jira:issuePanel:
+    - key: custom-app-hello-world-panel
+      resource: main
+      resolver:
+        function: resolver
+      viewportSize: large
+      title: Developer Dashboard
+      icon: https://developer.atlassian.com/platform/forge/images/issue-panel-icon.svg
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main
+    path: static/hello-world/build
+    tunnel:
+      port: 3000
+app:
+  id: ari:cloud:ecosystem::app/8a8ed734-1afe-4aab-b4c9-fb92d4f0e7da
+permissions:
+  scopes:
+    - "read:jira-work"
+    - "write:jira-work"
+    - "read:me"
+    - "storage:app"
+    - "manage:jira-project"
+    - "read:sprint:jira-software"
+    - "read:issue-details:jira"
+    - "read:jql:jira"
+    - "read:sprint:jira-software"
+  content:
+    scripts:
+      - "unsafe-hashes"
+      - "unsafe-inline"
+    styles:
+      - "unsafe-inline"
+  external:
+    fetch:
+      backend:
+        - "*"
+      client:
+        - "*"
