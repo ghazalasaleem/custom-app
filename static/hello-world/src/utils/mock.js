@@ -1,3 +1,5 @@
+import { Theme } from "../styles";
+
 export const linkedIssueDetails = {
   startDate: ''
 };
@@ -7,7 +9,12 @@ export const TimelineMock = [{
   id: 'ST-2',
   start: Date.UTC(2024, 1, 19),
   end: Date.UTC(2024, 1, 24),
-  owner: 'Alex David'
+  owner: 'Alex David',
+	color: 'red',
+	completed: {
+		amount: 0.8,
+		fill: Theme.default,
+	}
 }, {
   name: 'ST-3',
   start: Date.UTC(2024, 1, 23),

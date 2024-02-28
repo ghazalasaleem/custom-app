@@ -2,8 +2,8 @@ import { Tooltip } from 'antd';
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 
-import { addDays, differenceInCalendarDays, format, formatDistanceStrict, isAfter } from 'date-fns';
-import { OPEN_STATUSES, PROGRESS_STATUSES, SHORT_DATE_FORMAT } from '../../utils/constants';
+import { addDays, differenceInBusinessDays, differenceInCalendarDays, format, isAfter } from 'date-fns';
+import { CLOSED_STATUS, OPEN_STATUSES, PROGRESS_STATUSES, SHORT_DATE_FORMAT, TODAY } from '../../utils/constants';
 import { Theme } from '../../styles';
 
 export const DaySec = styled.div`
@@ -46,6 +46,7 @@ export const DaysChart = ({ data }) => {
   } = data;
 
   const [series, setSeries] = useState([]);
+  const slipDate = isAfter(TODAY, dueDate) ? TODAY : dueDate;
 
   useEffect(() => {
     if (startDate && dueDate && isAfter(dueDate, startDate)) {
@@ -53,19 +54,24 @@ export const DaysChart = ({ data }) => {
     }
   }, [data]);
 
-  const getStyles = (thisDay, i, diff) => {
+  const getStyles = (thisDay, i, diff, dueDate) => {
 
     const cusStyle = {
       backgroundColor: Theme.neutral
     };
 
-    const bufferDay = differenceInCalendarDays(today, thisDay);
+    const bufferDay = differenceInCalendarDays(dueDate, thisDay);
 
-    if (bufferDay > -1 && OPEN_STATUSES.includes(status)) {
-      cusStyle.backgroundColor = Theme.risk;
-    }
-    if (bufferDay > -1 && PROGRESS_STATUSES.includes(status)) {
-      cusStyle.backgroundColor = Theme.success;
+    if (isAfter(TODAY, thisDay)) {
+      if (bufferDay < 0 && !CLOSED_STATUS.includes(status.toUpperCase())) {
+        cusStyle.backgroundColor = Theme.risk;
+      }
+      if (bufferDay > -1 && OPEN_STATUSES.includes(status.toUpperCase())) {
+        cusStyle.backgroundColor = Theme.moderate;
+      }
+      if (bufferDay > -1 && PROGRESS_STATUSES.includes(status.toUpperCase())) {
+        cusStyle.backgroundColor = Theme.success;
+      }
     }
 
     if (i == 0 && i == diff - 1) {
@@ -84,7 +90,7 @@ export const DaysChart = ({ data }) => {
   };
 
   const calcSeries = () => {
-    const diff = differenceInCalendarDays(dueDate, startDate);
+    const diff = differenceInBusinessDays(slipDate, startDate);
     const dayDifference = [];
     if (diff) {
       for (let i = 0; i < diff; i++) {
@@ -93,7 +99,7 @@ export const DaysChart = ({ data }) => {
 
         dayDifference.push({
           date: format(thisDay, SHORT_DATE_FORMAT),
-          customStyle: getStyles(thisDay, i, diff)
+          customStyle: getStyles(thisDay, i, diff, dueDate)
         })
       }
     }
@@ -120,6 +126,6 @@ export const DaysChart = ({ data }) => {
         );
       })
     }
-    <span>{format(dueDate, SHORT_DATE_FORMAT)}</span>
+    <span>{format(slipDate, SHORT_DATE_FORMAT)}</span>
   </Wrapper>
 };

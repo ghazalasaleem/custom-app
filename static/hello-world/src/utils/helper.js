@@ -1,24 +1,35 @@
-import { differenceInCalendarDays, isAfter, isBefore } from "date-fns";
+import { addBusinessDays, differenceInBusinessDays, isAfter, isBefore, subBusinessDays } from "date-fns";
 import { Theme } from "../styles";
-import { DAY, STATUS_LIST, TODAY } from "./constants";
+import { CLOSED_STATUS, STATUS_LIST, TODAY } from "./constants";
 
 export const convertToDate = (date, isEnd) => {
-  let result = '';
-  if (date && date.indexOf('-')) {
+  let result = date;
+  if (date && typeof date === 'string' && date.indexOf('-')) {
     const item = date.split('-');
     if (item.length === 3)
       if (isEnd) {
-        result = new Date(item[0], item[1] - 1, item[2], 23, 59);
+        result = Date.UTC(item[0], item[1] - 1, item[2], 23, 59);
       }
       else {
-        result = new Date(item[0], item[1] - 1, item[2]);
-
+        result = Date.UTC(item[0], item[1] - 1, item[2], 0, 0);
       }
   }
   return result;
 }
 export const getIssueDetails = (idetails) => {
   let issue = {};
+  const dueDate = idetails?.fields?.customfield_10034 || idetails.fields.duedate;
+  let startDate = idetails.fields.customfield_10015;
+
+  // if Estimation has value, calculate start date accordingly
+
+  if (idetails.fields.timeoriginalestimate && dueDate) {
+    const dayDiff = Math.ceil((idetails.fields.timeoriginalestimate / 3600) / 8);
+    if (dayDiff > 0) {
+      startDate = subBusinessDays(convertToDate(dueDate), dayDiff).toISOString()?.split('T')[0];
+    }
+  }
+
   if (idetails && idetails.id) {
     issue = {
       id: idetails.id,
@@ -27,14 +38,13 @@ export const getIssueDetails = (idetails) => {
       comment: idetails.fields.comment,
       assignee: idetails.fields.assignee,
       created: idetails.fields.created,
-      dueDate: idetails?.fields?.customfield_10034 || idetails.fields.duedate,
+      dueDate: dueDate,
       fixVersions: idetails.fields.fixVersions,
       issueType: idetails.fields.issuetype,
-      startDate: idetails.fields.customfield_10015,
+      startDate: startDate,
       status: idetails.fields.status?.name,
       originalEstimate: idetails.fields.timeoriginalestimate,
       timeEstimate: idetails.fields.timeestimate,
-      // efd: idetails?.fields?.customfield_10034,
     };
   }
   return issue;
@@ -47,15 +57,28 @@ export const getIssueField = (data, fieldName) => {
   return null;
 };
 
-const calcItemData = (item, ltDetails, type) => {
+const calcItemData = (item, ltDetails, type, parentSlipped, parentEndDate) => {
   const itemStatus = item[type]?.fields?.status?.name || '';
   const statD = STATUS_LIST.find((item) => item.wrapperStatuses.includes(itemStatus.toUpperCase()));
   const key = item[type]?.key;
-  const dueDate = ltDetails[key]?.dueDate ? convertToDate(ltDetails[key].dueDate, true)?.getTime() : '';
-  const startDate = ltDetails[key]?.startDate ? convertToDate(ltDetails[key].startDate)?.getTime() : '';
-  const isSlipped = isAfter(TODAY, dueDate);
-  const endDate = isSlipped ? TODAY : dueDate;
-  const slip = isSlipped ? (dueDate - startDate) / (TODAY - startDate) : -1;
+  const dueDate = ltDetails[key]?.dueDate ? convertToDate(ltDetails[key].dueDate, true) : '';
+  const startDate = ltDetails[key]?.startDate ? convertToDate(ltDetails[key].startDate) : '';
+  let endDate = dueDate;
+  let slip = -1;
+  let isParentSlipped = false;
+  let dayDiff = 0;
+
+  if (startDate < parentEndDate && parentSlipped && !CLOSED_STATUS.includes(itemStatus.toUpperCase())) {
+    dayDiff = differenceInBusinessDays(parentEndDate, startDate) || 1;
+    endDate = addBusinessDays(dueDate, dayDiff).getTime();
+    slip = (dueDate - startDate) / (endDate - startDate);
+    isParentSlipped = true;
+  } else if (isAfter(TODAY, dueDate) && !CLOSED_STATUS.includes(itemStatus.toUpperCase())) {
+    endDate = TODAY;
+    dayDiff = differenceInBusinessDays(TODAY, dueDate) || 1;
+    slip = (dueDate - startDate) / (TODAY - startDate);
+  }
+
   return {
     name: key,
     id: item[type]?.id,
@@ -63,10 +86,13 @@ const calcItemData = (item, ltDetails, type) => {
     end: endDate,
     owner: (ltDetails[key] || {}).assignee?.displayName || '',
     status: itemStatus,
-    // color: slip > 0 ? Theme.risk : statD?.customStyle?.backgroundColor || '#00bcd4',
-    // borderColor: statD?.customStyle?.borderColor || '',
-    // borderWidth: statD?.customStyle?.borderWidth || 0,
+    color: slip > 0 && !isParentSlipped ? Theme.risk : isParentSlipped ? Theme.moderate : statD?.customStyle?.backgroundColor || '',
+    borderColor: statD?.customStyle?.borderColor || '',
+    borderWidth: statD?.customStyle?.borderWidth || 0,
     issueIcon: item[type]?.fields?.issuetype?.iconUrl,
+    slip: slip,
+    isParentSlipped: isParentSlipped,
+    slippedBy: slip > 0 ? dayDiff : '',
     completed: {
       amount: slip,
       fill: statD?.customStyle?.backgroundColor || '',
@@ -86,49 +112,65 @@ export const formatTimelineData = ({ issueData = {}, linkedIssues = [], ltDetail
     parentIssues.forEach(item => {
 
       parentIds.push(item?.inwardIssue?.id);
-      tl.push(calcItemData(item, ltDetails, 'inwardIssue'));
-
+      const record = calcItemData(item, ltDetails, 'inwardIssue');
+      if (record?.start && record?.end) {
+        tl.push(record);
+      }
     });
   }
 
-  const dueDate = issueData?.dueDate ? convertToDate(issueData?.dueDate, true).getTime() : '';
-  const startDate = issueData?.startDate ? convertToDate(issueData?.startDate).getTime() : '';
-  const isSlipped = isAfter(TODAY, dueDate);
-  const endDate = isSlipped ? TODAY : dueDate;
-  const slip = isSlipped ? (dueDate - startDate) / (TODAY - startDate) : -1;
-  console.log(isSlipped, startDate, TODAY, dueDate, slip)
+  const dueDate = issueData?.dueDate ? convertToDate(issueData?.dueDate, true) : '';
+  const startDate = issueData?.startDate ? convertToDate(issueData?.startDate) : '';
 
-  tl.push({
-    name: issueData?.key,
-    id: issueData?.id,
-    start: startDate,
-    end: endDate,
-    owner: issueData?.assignee?.displayName,
-    dependency: parentIds,
-    status: issueData?.status,
-    // color: slip > 0 ? Theme.risk : statDetails?.customStyle?.backgroundColor || '',
-    // // color: statDetails?.customStyle ? statDetails?.customStyle?.backgroundColor : '',
-    // borderColor: statDetails?.customStyle?.borderColor || '',
-    // borderWidth: statDetails?.customStyle?.borderWidth || 0,
-    issueIcon: issueData?.issueType?.iconUrl,
-    completed: {
-      amount: slip,
-      fill: statDetails?.customStyle?.backgroundColor || '',
-    }
-  });
+  let endDate = dueDate, currentSlipped = -1, isParentSlipped = false, dayDiff = 0;
+  const isParentDelayed = tl?.length && tl[tl.length - 1]?.slip > 0 ? true : false;
+
+  if (startDate < TODAY && isParentDelayed && !CLOSED_STATUS.includes(issueData?.status.toUpperCase())) {
+    dayDiff = differenceInBusinessDays(TODAY, startDate) || 1;
+    endDate = addBusinessDays(dueDate, dayDiff).getTime();
+    currentSlipped = (dueDate - startDate) / (endDate - startDate);
+    isParentSlipped = true;
+  } else if (isAfter(TODAY, dueDate) && !CLOSED_STATUS.includes(issueData?.status?.toUpperCase())) {
+    endDate = TODAY;
+    dayDiff = differenceInBusinessDays(TODAY, dueDate) || 1;
+    currentSlipped = (dueDate - startDate) / (TODAY - startDate);
+  }
+  if (startDate && endDate) {
+
+    tl.push({
+      name: issueData?.key,
+      id: issueData?.id,
+      start: startDate,
+      end: endDate,
+      owner: issueData?.assignee?.displayName,
+      dependency: parentIds,
+      status: issueData?.status,
+      color: currentSlipped > 0 && !isParentSlipped ? Theme.risk : isParentSlipped ? Theme.moderate : statDetails?.customStyle?.backgroundColor || '',
+      borderColor: statDetails?.customStyle?.borderColor || '',
+      borderWidth: statDetails?.customStyle?.borderWidth || 0,
+      issueIcon: issueData?.issueType?.iconUrl,
+      slip: currentSlipped,
+      isParentSlipped: isParentSlipped,
+      slippedBy: currentSlipped > 0 ? dayDiff : '',
+      completed: {
+        amount: currentSlipped,
+        fill: statDetails?.customStyle?.backgroundColor || '',
+      }
+    });
+  }
 
   if (dependentIssues.length) {
     dependentIssues.forEach(item => {
-
-      tl.push({
-        ...calcItemData(item, ltDetails, 'outwardIssue'),
-        dependency: issueData.id,
-      });
-
+      const record = calcItemData(item, ltDetails, 'outwardIssue', currentSlipped > 0, endDate);
+      if (record?.start && record?.end) {
+        tl.push({
+          ...record,
+          dependency: issueData.id,
+        });
+      }
     });
   }
   tl.push({});
-  console.log('tl - ', tl);
   return tl;
 };
 

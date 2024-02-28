@@ -2,19 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { CustomTag, INBOUND, OUTBOUND } from './components/CustomTag';
 import { DaysChart } from './components/DaysChart';
 import { TimelineChart } from './components/timelineChart';
-import { DependencySection, DetailsSection, DurationSection, Wrapper, DaysRow } from './styles';
-// import { DayMock, issueMOCK } from './utils/mock';
+import { DependencySection, DetailsSection, DurationSection, Wrapper, DaysRow, ChartLoading, TagWrapper } from './styles';
 import { invoke } from '@forge/bridge';
-import { getIssueDetails, getIssueField } from './utils/helper';
+import { formatTimelineData, getIssueDetails, getIssueField } from './utils/helper';
 import { RiskSec } from './components/Risk';
 import { Skeleton } from 'antd';
+import { CLOSED_STATUS, IN_DEPENDENCY, OB_DEPENDENCY } from './utils/constants';
 
 
 function App() {
   const [linkedIssues, setLinkedIssues] = useState(null);
   const [issueData, setIssueData] = useState(null);
   const [linkedTicketDetails, setLinkedTicketDetails] = useState({});
-
+  const [timelineList, setTimelineList] = useState([]);
+  const [isChartReady, setIsChartReady] = useState(false)
+  const [dependencyType, setDependencyType] = useState([]);
   const fetchIssueDetails = async () => invoke('fetchIssueDetails');
   const fetchLTDetails = async (payload) => invoke('fetchLinkedIssues', payload);
 
@@ -34,15 +36,34 @@ function App() {
           [idList[i]]: getIssueDetails(data)
         }))).catch(handleFetchError);
       }
+      const obD = linkedIssues.filter(item => item?.inwardIssue?.key);
+      const ibD = linkedIssues.filter(item => item?.outwardIssue?.key);
+      const dtList = [];
+      if (obD?.length) {
+        dtList.push(OB_DEPENDENCY);
+      }
+      if (ibD?.length) {
+        dtList.push(IN_DEPENDENCY);
+      }
+      setDependencyType(dtList);
     }
   }, [linkedIssues]);
 
   useEffect(() => {
-    console.log('linkedTicketDetails - ', linkedTicketDetails);
-  }, [linkedTicketDetails]);
+    if (issueData?.id) {
+      setTimelineList(formatTimelineData({
+        issueData,
+        linkedIssues,
+        ltDetails: linkedTicketDetails
+      }));
+    }
+  }, [issueData, linkedIssues, linkedTicketDetails]);
+
+  const current = timelineList?.length ? timelineList.find(item => item.name === issueData?.key) : {};
 
   const handleFetchSuccess = (data) => {
-    console.log(data);
+    // console.log(data);
+    setTimeout(() => setIsChartReady(true), 5000);
     setLinkedIssues(getIssueField(data, 'issuelinks'));
     setIssueData(getIssueDetails(data));
     setLinkedTicketDetails((prev) => ({
@@ -58,38 +79,40 @@ function App() {
     fetchIssueDetails().then(handleFetchSuccess).catch(handleFetchError);
   }, []);
 
-  const dependencyType = linkedIssues ? linkedIssues[0].inwardIssue?.key ? `Out - bound Dependency` : linkedIssues[0].outwardIssue?.key ? `In - bound Dependency` : '' : '-';
-
   return (
     <Wrapper>
       {issueData ? (
         <>
           <DurationSection>
-            <DaysRow><DaysChart data={issueData} /></DaysRow>
-            <div>
-              {dependencyType &&
-                <CustomTag type={dependencyType.includes('In - bound') ? INBOUND : OUTBOUND}>{dependencyType}</CustomTag>
+            <DaysRow>
+              <DaysChart data={issueData} />
+              <DetailsSection>
+                <div>
+                  <label>Accuracy : </label>
+                  <span>{current?.slip > 0 && !CLOSED_STATUS.includes(issueData?.status.toUpperCase()) ? `${Math.floor(current?.isParentSlipped ? (100 - (current?.slip * 100)) : (current?.slip * 100))}%` : '100%'}</span>
+                </div>
+
+                <RiskSec data={issueData} current={current} />
+
+                {/* <div>
+                <label>Stack Ranking : </label>
+                <span>3</span>
+                </div> */}
+              </DetailsSection>
+            </DaysRow>
+            <TagWrapper>
+              {dependencyType.map((item) => (
+                <CustomTag key={item} type={item.includes('In - bound') ? INBOUND : OUTBOUND}>{item}</CustomTag>
+              ))
               }
-            </div>
+            </TagWrapper>
           </DurationSection>
 
-          <DetailsSection>
-            <div>
-              <label>Accuracy : </label>
-              <span>40%</span>
-            </div>
 
-            <RiskSec data={issueData} />
-
-            {/* <div>
-              <label>Stack Ranking : </label>
-              <span>3</span>
-            </div> */}
-          </DetailsSection>
 
           <DependencySection>
             <label>Dependency Overview</label>
-            <TimelineChart issueData={issueData} linkedIssues={linkedIssues} ltDetails={linkedTicketDetails} />
+            {isChartReady ? <TimelineChart timelineList={timelineList} setTimelineList={setTimelineList} /> : <ChartLoading>{`Fetching ticket details & dependencies ...`}</ChartLoading>}
           </DependencySection>
         </>
       ) : (<Skeleton active />)}

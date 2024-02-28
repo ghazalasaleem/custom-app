@@ -2,11 +2,10 @@ import React, { useEffect, useState } from 'react';
 
 import { differenceInCalendarDays } from 'date-fns';
 import { Theme } from '../../styles';
-import { OPEN_STATUSES } from '../../utils/constants';
+import { CLOSED_STATUS, OPEN_STATUSES, TODAY } from '../../utils/constants';
 import styled from 'styled-components';
 import { Progress } from 'antd';
 
-const today = new Date();
 export const RiskSection = styled.div`
 display: flex;
 width: 300px;
@@ -15,7 +14,7 @@ label {
 }
 `;
 
-export const RiskSec = ({ data }) => {
+export const RiskSec = ({ data, current }) => {
 
   const [riskData, setRiskData] = useState({});
 
@@ -23,32 +22,44 @@ export const RiskSec = ({ data }) => {
     if (data?.startDate) {
       setRiskData(calculateRisk());
     }
-  }, [data]);
+  }, [data, current]);
 
   const calculateRisk = () => {
     const riskDetails = {
       color: Theme.neutral,
       status: ''
     };
-    const dueDateDifference = differenceInCalendarDays(data.dueDate, today);
-    const duration = differenceInCalendarDays(data.dueDate, data.startDate);
 
-    if (dueDateDifference < 0) {
+    if (current?.slip > 0 && !CLOSED_STATUS.includes(data?.status.toUpperCase())) {
       riskDetails.color = Theme.risk;
       riskDetails.status = 'High';
-    }
-    else {
-      if (duration <= dueDateDifference) {
-        riskDetails.color = Theme.success;
-        riskDetails.status = 'Low';
-      } else if (OPEN_STATUSES.includes(data.status)) {
-        if (duration - dueDateDifference > 1) {
+    } else {
+      if (!CLOSED_STATUS.includes(data?.status.toUpperCase())) {
+        const dueDateDifference = differenceInCalendarDays(data.dueDate, TODAY);
+        const duration = differenceInCalendarDays(data.dueDate, data.startDate);
+
+        if (dueDateDifference < 0) {
           riskDetails.color = Theme.risk;
           riskDetails.status = 'High';
         }
         else {
-          riskDetails.color = Theme.moderate;
-          riskDetails.status = 'Slight';
+          if (duration <= dueDateDifference) {
+            riskDetails.color = Theme.success;
+            riskDetails.status = 'Low';
+          } else if (OPEN_STATUSES.includes(data.status.toUpperCase())) {
+            if (duration - dueDateDifference > 1) {
+              riskDetails.color = Theme.risk;
+              riskDetails.status = 'High';
+            }
+            else {
+              riskDetails.color = Theme.moderate;
+              riskDetails.status = 'Slight';
+            }
+          }
+          else {
+            riskDetails.color = Theme.success;
+            riskDetails.status = 'Low';
+          }
         }
       }
       else {

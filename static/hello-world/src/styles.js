@@ -4,7 +4,7 @@ export const Theme = {
   neutral: 'grey',
   risk: '#DC362E',
   success: '#52c41a',
-  moderate: 'orange',
+  moderate: 'rgba(217, 178, 22, 1)',
   default: '#00bcd4'
 }; 
 
@@ -31,6 +31,9 @@ width: 100%;
 
 export const DaysRow = styled.div`
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 `;
 
 export const DetailsSection = styled.div`
@@ -51,4 +54,14 @@ gap: 15px;
   label {
     font-weight: bold;
   }
+`;
+
+export const ChartLoading = styled.div`
+  margin: 30px;
+`;
+
+export const TagWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 `;

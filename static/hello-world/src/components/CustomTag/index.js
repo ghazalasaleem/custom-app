@@ -13,7 +13,7 @@ padding: 2px 10px;
 
 export const CustomTag = ({ type,
   children }) => {
-    const color = type === INBOUND ? "grey" : "orange";
+    const color = type === INBOUND ? "rgba(150, 161, 184, 1)" : "orange";
 
-  return <StyledTag color={color}><GoWorkflow /> {children || 'In - bound Dependency'}</StyledTag>;
+  return <StyledTag color={color}><GoWorkflow /> {children || '-'}</StyledTag>;
 };
