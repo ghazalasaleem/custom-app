@@ -43,7 +43,7 @@ export const TimelineChart = ({
           //   // step: 1,
           // },
           dateTimeLabelFormats: {
-            day: {list:['%b %e', '%e']},
+            day: { list: ['%b %e', '%e'] },
           },
           grid: {
             borderWidth: 0
@@ -53,7 +53,7 @@ export const TimelineChart = ({
           min: min - diff * DAY,
           max: max + diff * DAY,
           custom: {
-            today:TODAY,
+            today: TODAY,
             weekendPlotBands: true
           }
         }],
@@ -125,6 +125,40 @@ export const TimelineChart = ({
         ]
       }
       );
+
+      Highcharts.addEvent(Highcharts.Axis, 'foundExtremes', e => {
+        if (e.target.options.custom && e.target.options.custom.weekendPlotBands) {
+
+          const axis = e.target,
+            chart = axis.chart,
+            day = 24 * 36e5,
+            isWeekend = t => /[06]/.test(chart.time.dateFormat('%w', t)),
+            plotBands = [];
+
+          let inWeekend = false;
+
+          for (
+            let x = Math.floor(axis.min / day) * day;
+            x <= Math.ceil(axis.max / day) * day;
+            x += day
+          ) {
+            const last = plotBands.at(-1);
+            if (isWeekend(x) && !inWeekend) {
+              plotBands.push({
+                from: x,
+                color: '#dedada'
+              });
+              inWeekend = true;
+            }
+
+            if (!isWeekend(x) && inWeekend && last) {
+              last.to = x;
+              inWeekend = false;
+            }
+          }
+          axis.options.plotBands = plotBands;
+        }
+      });
     }
   }, [timelineList]);
 
