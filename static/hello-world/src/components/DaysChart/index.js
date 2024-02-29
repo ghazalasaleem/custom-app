@@ -2,7 +2,7 @@ import { Tooltip } from 'antd';
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 
-import { addDays, differenceInBusinessDays, differenceInCalendarDays, format, isAfter } from 'date-fns';
+import { addBusinessDays, addDays, differenceInBusinessDays, differenceInCalendarDays, format, isAfter } from 'date-fns';
 import { CLOSED_STATUS, OPEN_STATUSES, PROGRESS_STATUSES, SHORT_DATE_FORMAT, TODAY } from '../../utils/constants';
 import { Theme } from '../../styles';
 
@@ -24,7 +24,7 @@ export const Wrapper = styled.div`
 
 export const DayWrapper = styled.div`
   display: flex;
-  width: 20%;
+  width: 16%;
   align-items: center;
   
 `;
@@ -93,9 +93,10 @@ export const DaysChart = ({ data }) => {
     const diff = differenceInBusinessDays(slipDate, startDate);
     const dayDifference = [];
     if (diff) {
-      for (let i = 0; i < diff; i++) {
+      const count = diff > 8 ? Math.ceil(diff/8) : 1;
+      for (let i = 0; i < diff; i=i+count) {
 
-        const thisDay = addDays(startDate, i + 1);
+        const thisDay = addBusinessDays(startDate, i + count);
 
         dayDifference.push({
           date: format(thisDay, SHORT_DATE_FORMAT),
