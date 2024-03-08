@@ -8,6 +8,7 @@ import { formatTimelineData, getIssueDetails, getIssueField } from './utils/help
 import { RiskSec } from './components/Risk';
 import { Skeleton } from 'antd';
 import { CLOSED_STATUS, IN_DEPENDENCY, OB_DEPENDENCY } from './utils/constants';
+import { showNotification } from './utils/notification';
 
 
 function App() {
@@ -17,15 +18,21 @@ function App() {
   const [timelineList, setTimelineList] = useState([]);
   const [isChartReady, setIsChartReady] = useState(false)
   const [dependencyType, setDependencyType] = useState([]);
+  const [children, setChildren] = useState(null);
   const fetchIssueDetails = async () => invoke('fetchIssueDetails');
   const fetchLTDetails = async (payload) => invoke('fetchLinkedIssues', payload);
-
+  const sendEmail = async () => invoke('sendMail');
+ 
   // Un comment below useEffect to run in local
 
   // useEffect(() => {
   //   setLinkedIssues(getIssueField(issueMOCK, 'issuelinks'));
   //   setIssueData(getIssueDetails(issueMOCK));
   // }, []);
+
+  // useEffect(()=>{
+  //   console.log('details - ', linkedTicketDetails);
+  // }, [linkedTicketDetails]);
 
   useEffect(() => {
     if (linkedIssues?.length) {
@@ -50,6 +57,17 @@ function App() {
   }, [linkedIssues]);
 
   useEffect(() => {
+    if(children?.length) {
+      children.forEach(element => {
+        fetchLTDetails({ key: element.key }).then((data) => setLinkedTicketDetails((prev) => ({
+          ...prev,
+          [element.key]: getIssueDetails(data)
+        }))).catch(handleFetchError);
+      });
+    }
+  }, [children]);
+
+  useEffect(() => {
     if (issueData?.id) {
       setTimelineList(formatTimelineData({
         issueData,
@@ -60,11 +78,23 @@ function App() {
   }, [issueData, linkedIssues, linkedTicketDetails]);
 
   const current = timelineList?.length ? timelineList.find(item => item.name === issueData?.key) : {};
-
+  
   const handleFetchSuccess = (data) => {
     // console.log(data);
-    setTimeout(() => setIsChartReady(true), 5000);
+    setTimeout(() => {
+      setIsChartReady(true);
+      showNotification({
+        show: true,
+        title: 'Developers Dashboard',
+        description: 'Your ticket is overdue.'
+      });
+      sendEmail().then((data) => {
+        console.log('email response - ', data);
+      }).catch(handleFetchError);
+    // console.log(timelineList);
+  }, 5000);
     setLinkedIssues(getIssueField(data, 'issuelinks'));
+    setChildren(getIssueField(data, 'subtasks'));
     setIssueData(getIssueDetails(data));
     setLinkedTicketDetails((prev) => ({
       ...prev,

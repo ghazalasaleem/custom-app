@@ -28,6 +28,7 @@ permissions:
     - "read:issue-details:jira"
     - "read:jql:jira"
     - "read:sprint:jira-software"
+    - "send:notification:jira"
   content:
     scripts:
       - "unsafe-hashes"
@@ -35,6 +36,10 @@ permissions:
     styles:
       - "unsafe-inline"
   external:
+    fonts:
+      - 'https://fonts.gstatic.com/'
+    styles:
+      - 'https://fonts.googleapis.com/css2'
     fetch:
       backend:
         - "*"

@@ -45,6 +45,7 @@ export const getIssueDetails = (idetails) => {
       status: idetails.fields.status?.name,
       originalEstimate: idetails.fields.timeoriginalestimate,
       timeEstimate: idetails.fields.timeestimate,
+      subtasks: idetails.fields.subtasks
     };
   }
   return issue;
@@ -157,6 +158,28 @@ export const formatTimelineData = ({ issueData = {}, linkedIssues = [], ltDetail
         fill: statDetails?.customStyle?.backgroundColor || '',
       }
     });
+
+    if (issueData?.subtasks?.length && ltDetails) {
+      const child = issueData.subtasks[0] || {};
+      const childStatus = child?.fields?.status?.name || '';
+      const statD = STATUS_LIST.find((item) => item.wrapperStatuses.includes(childStatus.toUpperCase()));
+      
+      // const dueDate = ltDetails[child?.key]?.dueDate ? convertToDate(ltDetails[child?.key].dueDate, true) : '';
+      // const startDate = ltDetails[child?.key]?.startDate ? convertToDate(ltDetails[child?.key].startDate) : '';
+  
+      tl.push({
+        name: child?.key,
+        id: child?.id,
+        start: startDate,
+        end: endDate,
+        owner: (ltDetails[child?.key] || {}).assignee?.displayName || '',
+        status: childStatus,
+        color: statD?.customStyle?.backgroundColor || '',
+        borderColor: statD?.customStyle?.borderColor || '',
+        borderWidth: statD?.customStyle?.borderWidth || 0,
+        issueIcon: child?.fields?.issuetype?.iconUrl,
+      });
+    }
   }
 
   if (dependentIssues.length) {

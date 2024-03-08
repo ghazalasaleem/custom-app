@@ -7,6 +7,7 @@ display: flex;
 gap: 12px;
 align-items: center;
 margin-left: 8px;
+font-family: "Inter", sans-serif;
 `;
 
 const StatusWrapper = styled.div`
@@ -22,7 +23,7 @@ border-radius: 25px;
 `;
 
 const StatusLabel = styled.div`
-font-family: Inter;
+font-family: "Inter", sans-serif;
 font-size: 14px;
 font-weight: 600;
 line-height: 17px;
