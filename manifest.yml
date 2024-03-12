@@ -29,6 +29,7 @@ permissions:
     - "read:jql:jira"
     - "read:sprint:jira-software"
     - "send:notification:jira"
+    - "write:issue:jira"
   content:
     scripts:
       - "unsafe-hashes"

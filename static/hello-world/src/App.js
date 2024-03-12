@@ -7,7 +7,7 @@ import { invoke } from '@forge/bridge';
 import { formatTimelineData, getIssueDetails, getIssueField } from './utils/helper';
 import { RiskSec } from './components/Risk';
 import { Skeleton } from 'antd';
-import { CLOSED_STATUS, IN_DEPENDENCY, OB_DEPENDENCY } from './utils/constants';
+import { CLOSED_STATUS, IN_DEPENDENCY, OB_DEPENDENCY, OVERDUE } from './utils/constants';
 import { showNotification } from './utils/notification';
 
 
@@ -21,8 +21,10 @@ function App() {
   const [children, setChildren] = useState(null);
   const fetchIssueDetails = async () => invoke('fetchIssueDetails');
   const fetchLTDetails = async (payload) => invoke('fetchLinkedIssues', payload);
-  const sendEmail = async () => invoke('sendMail');
- 
+  // const sendEmail = async (val) => invoke('sendMail', val);
+  const updateIssueLabel = async () => invoke('updateLabel');
+
+
   // Un comment below useEffect to run in local
 
   // useEffect(() => {
@@ -57,7 +59,7 @@ function App() {
   }, [linkedIssues]);
 
   useEffect(() => {
-    if(children?.length) {
+    if (children?.length) {
       children.forEach(element => {
         fetchLTDetails({ key: element.key }).then((data) => setLinkedTicketDetails((prev) => ({
           ...prev,
@@ -78,21 +80,38 @@ function App() {
   }, [issueData, linkedIssues, linkedTicketDetails]);
 
   const current = timelineList?.length ? timelineList.find(item => item.name === issueData?.key) : {};
+
+  useEffect(() => {
+
+    if (current?.slip > 0) {
+      // send mail to assignee with overdue & dependency details
+      // const emailContent = `This issue has ${dependencyType.length ? dependencyType.join(' & ') : 'no dependency.'}\nThis issue is over due by ${current.slippedBy} day(s).`;
+      // sendEmail({ text: emailContent, accountId: issueData?.assignee?.accountId, active: issueData?.assignee?.active }).then((data) => {
+      // }).catch(handleFetchError);
+
+      if (!issueData?.labels || !issueData.labels.includes(OVERDUE)) {
+        updateIssueLabel().then((data) => {console.log('Issue update response -', data)}).catch(handleFetchError);
+      }
+    }
   
+  }, [issueData, current, dependencyType]);
+  
+  const afterLoad = () => {
+    setIsChartReady(true);
+
+    // TO SHOW POPUP NOTIFICATION
+
+    // showNotification({
+    //   show: true,
+    //   title: 'Developers Dashboard',
+    //   description: 'Your ticket is overdue.'
+    // });
+
+  };
+
   const handleFetchSuccess = (data) => {
-    // console.log(data);
-    setTimeout(() => {
-      setIsChartReady(true);
-      showNotification({
-        show: true,
-        title: 'Developers Dashboard',
-        description: 'Your ticket is overdue.'
-      });
-      sendEmail().then((data) => {
-        console.log('email response - ', data);
-      }).catch(handleFetchError);
-    // console.log(timelineList);
-  }, 5000);
+    console.log(data);
+    setTimeout(afterLoad, 5000);
     setLinkedIssues(getIssueField(data, 'issuelinks'));
     setChildren(getIssueField(data, 'subtasks'));
     setIssueData(getIssueDetails(data));

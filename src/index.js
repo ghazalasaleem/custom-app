@@ -1,8 +1,9 @@
 import Resolver from '@forge/resolver';
 import api, { route } from '@forge/api';
+import { OVERDUE } from '../static/hello-world/src/utils/constants';
 const resolver = new Resolver();
 
-resolver.define('fetchLinkedIssues', async ({payload, context}) => {
+resolver.define('fetchLinkedIssues', async ({ payload, context }) => {
   const res = await api.asUser().requestJira(route`/rest/api/3/issue/${payload.key}`);
   const data = await res.json();
   return data;
@@ -15,58 +16,63 @@ resolver.define('fetchIssueDetails', async (req) => {
   return data;
 });
 
-
-var bodyData = `{
-  "htmlBody": "The <strong>latest</strong> test results for this ticket are now available.",
-  "restrict": {
-    "groupIds": [],
-    "groups": [
-      {
-        "name": "notification-group"
-      }
-    ],
-    "permissions": [
-      {
-        "key": "BROWSE"
-      }
-    ]
-  },
-  "subject": "Latest test results",
-  "textBody": "The latest test results for this ticket are now available.",
-  "to": {
-    "assignee": true,
-    "groupIds": [],
-    // "groups": [
-    //   {
-    //     "name": "notification-group"
-    //   }
-    // ],
-    "reporter": false,
-    // "users": [
-    //   {
-    //     "accountId": "5b10a2844c20165700ede21g",
-    //     "active": false
-    //   }
-    // ],
-    "voters": false,
-    "watchers": true
-  }
-}`;
+const getEmailData = ({ text, accountId, active }) => {
+  return {
+    "htmlBody": text,
+    "subject": "JIRA Issue Status",
+    "textBody": text,
+    "to": {
+      "assignee": false,
+      "groupIds": [],
+      "reporter": false,
+      "users": [
+        {
+          "accountId": accountId,
+          "active": active
+        }
+      ],
+      "voters": false,
+      "watchers": false
+    }
+  };
+};
 resolver.define('sendMail', async (req) => {
   const key = req.context.extension.issue.key;
-  const response =  await api.asUser().requestJira(route`/rest/api/3/issue/${key}/notify`, {
-  method: 'POST',
-  headers: {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json'
-  },
-  body: bodyData
+  const response = await api.asUser().requestJira(route`/rest/api/3/issue/${key}/notify`, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(getEmailData(req.payload))
+  });
+
+  return response;
 });
 
-const data = await response.json();
-console.log(`Response: ${response.status} ${response.statusText}`);
-console.log(data);
-return data;
+const getLabelUpdateData = (val) => {
+  return {
+    "update": {
+      "labels": [
+        {
+          "add": OVERDUE
+        },
+      ],
+    }
+  };
+};
+resolver.define('updateLabel', async (req) => {
+  const key = req.context.extension.issue.key;
+  console.log(JSON.stringify(getLabelUpdateData(req.payload)));
+  const response = await api.asUser().requestJira(route`/rest/api/3/issue/${key}?notifyUsers=true&returnIssue=true`, {
+    method: 'PUT',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(getLabelUpdateData(req.payload))
+  });
+  return response;
 });
 
 

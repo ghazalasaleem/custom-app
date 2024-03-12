@@ -8,6 +8,7 @@ export const SHORT_DATE_FORMAT = "MMM dd";
 
 export const OB_DEPENDENCY = "Out - bound Dependency";
 export const IN_DEPENDENCY = "In - bound Dependency";
+export const OVERDUE = "Overdue";
 
 export const DAY = 24 * 36e5;
 export const TODAY = Date.now();
