@@ -102,7 +102,7 @@ const calcItemData = (item, ltDetails, type, parentSlipped, parentEndDate) => {
   };
 };
 
-export const formatTimelineData = ({ issueData = {}, linkedIssues = [], ltDetails = {} }) => {
+export const formatTimelineData = ({ issueData = {}, linkedIssues = [], ltDetails = {}, childIssues = [] }) => {
 
   const tl = [{}];
   const parentIssues = linkedIssues.filter((item) => item.inwardIssue?.key);
@@ -162,27 +162,33 @@ export const formatTimelineData = ({ issueData = {}, linkedIssues = [], ltDetail
 
     // TO show CHILD issues in Gantt Chart
 
-    // if (issueData?.subtasks?.length && ltDetails) {
-    //   const child = issueData.subtasks[0] || {};
-    //   const childStatus = child?.fields?.status?.name || '';
-    //   const statD = STATUS_LIST.find((item) => item.wrapperStatuses.includes(childStatus.toUpperCase()));
-      
-    //   // const dueDate = ltDetails[child?.key]?.dueDate ? convertToDate(ltDetails[child?.key].dueDate, true) : '';
-    //   // const startDate = ltDetails[child?.key]?.startDate ? convertToDate(ltDetails[child?.key].startDate) : '';
-  
-    //   tl.push({
-    //     name: child?.key,
-    //     id: child?.id,
-    //     start: startDate,
-    //     end: endDate,
-    //     owner: (ltDetails[child?.key] || {}).assignee?.displayName || '',
-    //     status: childStatus,
-    //     color: statD?.customStyle?.backgroundColor || '',
-    //     borderColor: statD?.customStyle?.borderColor || '',
-    //     borderWidth: statD?.customStyle?.borderWidth || 0,
-    //     issueIcon: child?.fields?.issuetype?.iconUrl,
-    //   });
-    // }
+    if (childIssues?.length && ltDetails) {
+
+      childIssues.forEach((item) => {
+        const details = ltDetails[item?.key] || {};
+        const childStatus = details.status || '';
+        const statD = STATUS_LIST.find((item) => item.wrapperStatuses.includes(childStatus.toUpperCase()));
+        
+        const dueDate = details.dueDate ? convertToDate(details.dueDate, true) : '';
+        const startDate = details.startDate ? convertToDate(details.startDate) : '';
+    
+        if(startDate && dueDate) {
+          tl.push({
+            name: item?.key,
+            id: item?.id,
+            start: startDate,
+            end: dueDate,
+            owner: details.assignee?.displayName || '',
+            status: childStatus,
+            color: statD?.customStyle?.backgroundColor || '',
+            borderColor: statD?.customStyle?.borderColor || '',
+            borderWidth: statD?.customStyle?.borderWidth || 0,
+            issueIcon: item?.fields?.issuetype?.iconUrl,
+            dependency: issueData.id,
+          });
+        }
+      });     
+    }
   }
 
   if (dependentIssues.length) {
@@ -197,6 +203,7 @@ export const formatTimelineData = ({ issueData = {}, linkedIssues = [], ltDetail
     });
   }
   tl.push({});
+  // console.log(tl);
   return tl;
 };
 

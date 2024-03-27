@@ -16,6 +16,13 @@ resolver.define('fetchIssueDetails', async (req) => {
   return data;
 });
 
+resolver.define('fetchChildIssues', async (req) => {
+  const key = req.context.extension.issue.key;
+  const res = await api.asUser().requestJira(route`/rest/api/3/search?jql=parent = ${key} ORDER BY created ASC`);
+  const data = await res.json();
+  return data;
+});
+
 const getEmailData = ({ text, accountId, active }) => {
   return {
     "htmlBody": text,
@@ -63,7 +70,6 @@ const getLabelUpdateData = (val) => {
 };
 resolver.define('updateLabel', async (req) => {
   const key = req.context.extension.issue.key;
-  console.log(JSON.stringify(getLabelUpdateData(req.payload)));
   const response = await api.asUser().requestJira(route`/rest/api/3/issue/${key}?notifyUsers=true&returnIssue=true`, {
     method: 'PUT',
     headers: {

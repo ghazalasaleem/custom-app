@@ -17,7 +17,7 @@ export const TimelineChart = ({
     if (timelineList?.length) {
 
       const { min, max } = getMinMaxDate(timelineList);
-      const diff = differenceInCalendarDays(max, min) < 10 ? Math.ceil((10 - differenceInCalendarDays(max, min)) / 2) : 2;
+      const diff = differenceInCalendarDays(max, min) < 10 ? Math.ceil((10 - differenceInCalendarDays(max, min)) / 2) : 4;
 
       setOptions({
         tooltip: {
@@ -50,7 +50,7 @@ export const TimelineChart = ({
           },
           gridLineWidth: 1,
           minTickInterval: 24 * 3600 * 1000,
-          min: min - diff * DAY,
+          min: min - 2 * DAY,
           max: max + diff * DAY,
           custom: {
             today: TODAY,
@@ -96,6 +96,7 @@ export const TimelineChart = ({
                   line-height: 20px;
                   letter-spacing: 0em;
                   text-align: left;
+                  white-space: break-spaces;
                   color: #6a6969'>{point.owner}</span></div></div>`,
               style: {
                 fontWeight: 'normal',
