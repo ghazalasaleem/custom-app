@@ -39,7 +39,7 @@ const StatusTag = ({ data }) => {
 
   return (
     <StatusWrapper>
-      <StatusIcon style={customStyle} >
+      <StatusIcon style={{borderColor: customStyle.backgroundColor, ...customStyle}} >
 
       </StatusIcon>
       <StatusLabel>

@@ -4,10 +4,10 @@ import { DaysChart } from './components/DaysChart';
 import { TimelineChart } from './components/timelineChart';
 import { DependencySection, DetailsSection, DurationSection, Wrapper, DaysRow, ChartLoading, TagWrapper } from './styles';
 import { invoke } from '@forge/bridge';
-import { formatTimelineData, getIssueDetails, getIssueField } from './utils/helper';
+import { formatChildernTimelineData, formatTimelineData, getIssueDetails, getIssueField, getStartEndFromChildren } from './utils/helper';
 import { RiskSec } from './components/Risk';
 import { Skeleton } from 'antd';
-import { CLOSED_STATUS, IN_DEPENDENCY, OB_DEPENDENCY, OVERDUE } from './utils/constants';
+import { CLOSED_STATUS, IN_DEPENDENCY, IS_PARENT_TYPE, OB_DEPENDENCY, OVERDUE } from './utils/constants';
 import { showNotification } from './utils/notification';
 
 
@@ -17,10 +17,10 @@ const App = () => {
   const [issueData, setIssueData] = useState(null);
 
   // linkedIssues
-  const [linkedIssues, setLinkedIssues] = useState(null);
+  const [linkedIssues, setLinkedIssues] = useState([]);
 
   // Child Issues
-  const [childIssues, setChildIssues] = useState(null);
+  const [childIssues, setChildIssues] = useState([]);
 
   // Details of all the tickets current, parent, dependent, subtask, child issues
   const [linkedTicketDetails, setLinkedTicketDetails] = useState({});
@@ -45,14 +45,17 @@ const App = () => {
   // const sendEmail = async (val) => invoke('sendMail', val);
   const updateIssueLabel = async () => invoke('updateLabel');
 
-  // useEffect(() => {
-  //   console.log('LTD - ', linkedTicketDetails);
-  // }, [linkedTicketDetails]);
-
-
-  // useEffect(() => {
-  //   console.log('CI - ', childIssues);
-  // }, [childIssues]);
+  useEffect(() => {
+    if(issueData?.status && !issueData.startDate && childIssues?.length) {
+      const { min, max } = getStartEndFromChildren(childIssues);
+      const idata = {
+        ...issueData,
+        startDate: min,
+        dueDate: max,
+      }
+      setIssueData(idata);
+    }
+  }, [childIssues, issueData]);
 
   const afterLoad = () => {
     setIsChartReady(true);
@@ -68,10 +71,9 @@ const App = () => {
   };
 
   const getChildIssues = () => {
-    fetchChildIssues().then((data) =>{
-      console.log('Child issues - ',  data);
-      if (data?.issues) {
-        setChildIssues(data.issues);
+    fetchChildIssues().then((data) => {
+      if (data?.issues?.length) {
+        setChildIssues(data.issues.map((item) => getIssueDetails(item)));
         data.issues.forEach((item) => {
           setLinkedTicketDetails((prev) => ({
             ...prev,
@@ -84,7 +86,6 @@ const App = () => {
   };
 
   const handleFetchSuccess = (data) => {
-    console.log(data);
 
     setTimeout(afterLoad, 5000);
     setLinkedIssues(getIssueField(data, 'issuelinks'));
@@ -94,7 +95,9 @@ const App = () => {
       [data?.key]: getIssueDetails(data)
     }));
 
-    getChildIssues();
+    if (IS_PARENT_TYPE.includes(data?.fields?.issuetype?.name)) {
+      getChildIssues();
+    }
   };
 
   const handleFetchError = (err) => {
@@ -130,14 +133,24 @@ const App = () => {
 
   useEffect(() => {
     if (issueData?.id) {
-      setTimelineList(formatTimelineData({
-        issueData,
-        linkedIssues,
-        ltDetails: linkedTicketDetails,
-        childIssues
-      }));
+      if (childIssues?.length && issueData.startDate && issueData.dueDate) {
+        setTimelineList(formatChildernTimelineData({
+          issueData,
+          childIssues,
+          ltDetails: linkedTicketDetails
+
+        }));
+
+      } else {
+        setTimelineList(formatTimelineData({
+          issueData,
+          linkedIssues,
+          ltDetails: linkedTicketDetails,
+          childIssues
+        }));
+      }
     }
-  }, [issueData, linkedIssues, linkedTicketDetails]);
+  }, [issueData, linkedIssues, linkedTicketDetails, childIssues]);
 
   const current = timelineList?.length ? timelineList.find(item => item.name === issueData?.key) : {};
 
@@ -194,7 +207,7 @@ const App = () => {
 
           <DependencySection>
             <label>Dependency Overview</label>
-            {isChartReady ? <TimelineChart timelineList={timelineList} setTimelineList={setTimelineList} /> : <ChartLoading>{`Fetching ticket details & dependencies ...`}</ChartLoading>}
+            {isChartReady ? <TimelineChart timelineList={timelineList} /> : <ChartLoading>{`Fetching ticket details & dependencies ...`}</ChartLoading>}
           </DependencySection>
         </>
       ) : (<Skeleton active />)}

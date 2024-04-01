@@ -29,7 +29,7 @@ export const TimelineChart = ({
         xAxis: [{
           type: 'datetime',
           currentDateIndicator: {
-            color: '#748891',
+            color: 'rgba(164, 175, 199, 1)',
             dashStyle: 'Solid',
             width: 2,
             label: {
@@ -82,8 +82,26 @@ export const TimelineChart = ({
               enabled: true,
               align: 'right',
               verticalAlign: 'middle',
-              x: 120,
-              format: `<div style='display:flex;gap:5px;min-width:110px;min-height:40px;'><img style='width: 16px; height:16px; margin-top:3px' src='{point.issueIcon}'></img><div style='display: flex; flex-direction: column'><span style='
+              format: `<div
+              style='display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 10px;
+              margin-top: 2px;
+              translate:160px;
+              width: 300px;
+              '
+              ><div style='display: flex;
+              width: 150px;
+              height: 40px;
+              font-size: 12px;
+              font-weight: 300;
+              line-height: 20px;
+              flex: 1;
+              justify-content: center;
+              align-content: center;
+              align-items: center;    justify-content: flex-end;
+              padding-right: 10px;'>{point.slippedBy}</div><div style='display:flex;gap:5px;min-width:110px;min-height:40px;'><img style='width: 16px; height:16px; margin-top:3px' src='{point.issueIcon}'></img><div style='display: flex; flex-direction: column; width: 120px;'><span style='
                   font-size: 14px;
                   font-weight: 500;
                   line-height: 20px;
@@ -96,8 +114,9 @@ export const TimelineChart = ({
                   line-height: 20px;
                   letter-spacing: 0em;
                   text-align: left;
-                  white-space: break-spaces;
-                  color: #6a6969'>{point.owner}</span></div></div>`,
+                  color: #;
+                  text-overflow: ellipsis;
+                  overflow: hidden;'>{point.owner}</span></div></div></div>`,
               style: {
                 fontWeight: 'normal',
                 textOutline: 'none',
@@ -105,16 +124,7 @@ export const TimelineChart = ({
               },
               useHTML: true,
             },
-            {
-              enabled: true,
-              align: 'right',
-              format: '{#if point.slippedBy}{point.slippedBy}{/if}',
-              padding: 10,
-              style: {
-                fontWeight: 'normal',
-                textOutline: 'none',
-              }
-            }]
+            ]
           }
         },
         series: [

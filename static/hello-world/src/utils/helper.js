@@ -159,36 +159,6 @@ export const formatTimelineData = ({ issueData = {}, linkedIssues = [], ltDetail
         fill: statDetails?.customStyle?.backgroundColor || '',
       }
     });
-
-    // TO show CHILD issues in Gantt Chart
-
-    if (childIssues?.length && ltDetails) {
-
-      childIssues.forEach((item) => {
-        const details = ltDetails[item?.key] || {};
-        const childStatus = details.status || '';
-        const statD = STATUS_LIST.find((item) => item.wrapperStatuses.includes(childStatus.toUpperCase()));
-        
-        const dueDate = details.dueDate ? convertToDate(details.dueDate, true) : '';
-        const startDate = details.startDate ? convertToDate(details.startDate) : '';
-    
-        if(startDate && dueDate) {
-          tl.push({
-            name: item?.key,
-            id: item?.id,
-            start: startDate,
-            end: dueDate,
-            owner: details.assignee?.displayName || '',
-            status: childStatus,
-            color: statD?.customStyle?.backgroundColor || '',
-            borderColor: statD?.customStyle?.borderColor || '',
-            borderWidth: statD?.customStyle?.borderWidth || 0,
-            issueIcon: item?.fields?.issuetype?.iconUrl,
-            dependency: issueData.id,
-          });
-        }
-      });     
-    }
   }
 
   if (dependentIssues.length) {
@@ -202,8 +172,112 @@ export const formatTimelineData = ({ issueData = {}, linkedIssues = [], ltDetail
       }
     });
   }
+
   tl.push({});
-  // console.log(tl);
+  return tl;
+};
+
+export const formatChildernTimelineData = ({ issueData = {}, childIssues = [], ltDetails = [] }) => {
+  const tl = [{}];
+  const dueDate = issueData?.dueDate ? convertToDate(issueData?.dueDate, true) : '';
+  const startDate = issueData?.startDate ? convertToDate(issueData?.startDate) : '';
+  const statDetails = STATUS_LIST.find((item) => item.wrapperStatuses.includes(issueData?.status.toUpperCase()));
+
+
+  let endDate = dueDate, currentSlipped = -1, dayDiff = 0;
+
+  if (isAfter(TODAY, dueDate) && !CLOSED_STATUS.includes(issueData?.status?.toUpperCase())) {
+    endDate = TODAY;
+    dayDiff = differenceInBusinessDays(TODAY, dueDate) || 1;
+    currentSlipped = (dueDate - startDate) / (TODAY - startDate);
+  }
+
+  if (startDate && endDate) {
+    tl.push({
+      name: issueData?.key,
+      id: issueData?.id,
+      start: startDate,
+      end: endDate,
+      owner: issueData?.assignee?.displayName,
+      status: issueData?.status,
+      color: currentSlipped > 0 ? Theme.risk : statDetails?.customStyle?.backgroundColor || '',
+      borderColor: statDetails?.customStyle?.borderColor || '',
+      borderWidth: statDetails?.customStyle?.borderWidth || 0,
+      issueIcon: issueData?.issueType?.iconUrl,
+      slip: currentSlipped,
+      slippedBy: currentSlipped > 0 ? dayDiff : '',
+      completed: {
+        amount: currentSlipped,
+        fill: statDetails?.customStyle?.backgroundColor || '',
+      }
+    });
+  }
+  let maxDelay = 0;
+
+  if (childIssues?.length && ltDetails) {
+
+    childIssues.forEach((item) => {
+      const details = ltDetails[item?.key] || {};
+      const childStatus = details.status || '';
+      const statD = STATUS_LIST.find((item) => item.wrapperStatuses.includes(childStatus.toUpperCase()));
+
+      const childDueDate = details.dueDate ? convertToDate(details.dueDate, true) : '';
+      const childStartDate = details.startDate ? convertToDate(details.startDate) : '';
+
+      let childEndDate = childDueDate, currentSlipped = -1, dayDiff = 0;
+
+      if (isAfter(TODAY, childDueDate) && !CLOSED_STATUS.includes(childStatus.toUpperCase())) {
+        childEndDate = TODAY;
+        dayDiff = differenceInBusinessDays(TODAY, childDueDate) || 1;
+        currentSlipped = (childDueDate - childStartDate) / (TODAY - childStartDate);
+      }
+      if(maxDelay < dayDiff) {
+        maxDelay = dayDiff;
+      }
+
+      if (childStartDate && childDueDate) {
+        tl.push({
+          name: item?.key,
+          id: item?.id,
+          start: childStartDate,
+          end: childEndDate,
+          owner: details.assignee?.displayName || '',
+          status: childStatus,
+          color: currentSlipped > 0 ? Theme.risk : statD?.customStyle?.backgroundColor || '',
+          borderColor: statD?.customStyle?.borderColor || '',
+          borderWidth: statD?.customStyle?.borderWidth || 0,
+          issueIcon: item?.issueType?.iconUrl,
+          dependency: issueData.id,
+          slip: currentSlipped,
+          slippedBy: currentSlipped > 0 ? dayDiff : '',
+          completed: {
+            amount: currentSlipped,
+            fill: statD?.customStyle?.backgroundColor || '',
+          }
+        });
+      }
+    });
+  }
+
+  if(maxDelay > 0) {
+
+    const modifiedED = addBusinessDays(endDate,maxDelay).getTime();
+
+    const modifiedCSlipped =  (dueDate-startDate)/(modifiedED - startDate);
+    tl[1] = {
+      ...tl[1],
+      end: modifiedED,
+      color: modifiedCSlipped > 0 ? Theme.moderate : statDetails?.customStyle?.backgroundColor || '',
+      slippedBy: maxDelay,
+      slip:modifiedCSlipped,
+      completed: {
+        amount: modifiedCSlipped,
+        fill: statDetails?.customStyle?.backgroundColor || '',
+      }
+    };
+  }
+
+  tl.push({});
   return tl;
 };
 
@@ -226,4 +300,21 @@ export const getMinMaxDate = (list) => {
   return {
     min, max
   }
+};
+
+export const getStartEndFromChildren = (list) => {
+  let min, max;
+  list.forEach((item) => {
+
+    const startD = convertToDate(item.startDate) || '';
+    const endD = convertToDate(item.dueDate) || '';
+
+    if (!min || (min && isBefore(startD, min))) {
+      min = item.startDate;
+    }
+    if (!max || (max && isAfter(endD, max))) {
+      max = item.dueDate;
+    }
+  });
+  return { min, max };
 };

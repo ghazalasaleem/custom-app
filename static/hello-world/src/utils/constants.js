@@ -12,6 +12,7 @@ export const OVERDUE = "Overdue";
 
 export const DAY = 24 * 36e5;
 export const TODAY = Date.now();
+export const IS_PARENT_TYPE= ['Epic', 'Initiative'];
 
 export const STATUS_LIST = [{
   name: 'Open',
@@ -54,7 +55,7 @@ export const STATUS_LIST = [{
   wrapperStatuses: CLOSED_STATUS,
   customStyle: {
     backgroundColor: '#53A828',
-    borderColor: '#049FD9',
+    // borderColor: '#049FD9',
     borderWidth: 2,
     borderStyle: 'solid'
 
@@ -65,18 +66,18 @@ export const STATUS_LIST = [{
   wrapperStatuses: [],
   customStyle: {
     backgroundColor: '#DC362E',
-    borderColor: '#049FD9',
+    // borderColor: '#049FD9',
     borderWidth: 2,
     borderStyle: 'solid'
 
   }
 },
 {
-  name: 'EFD Change',
+  name: 'EFD (estimated)',
   wrapperStatuses: [],
   customStyle: {
     backgroundColor: 'rgba(217, 178, 22, 1)',
-    borderColor: '#049FD9',
+    // borderColor: '#049FD9',
     borderWidth: 2,
     borderStyle: 'solid'
 
